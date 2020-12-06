@@ -1,10 +1,14 @@
 package com.example.todoroomapp.tasks;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.LayoutInflater;
+import android.view.OrientationEventListener;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,25 +20,24 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.todoroomapp.R;
+import com.example.todoroomapp.SoundManager;
 import com.example.todoroomapp.model.Task;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Timer;
 
-public class TasksFragment extends Fragment implements TaskAdapter.MyTaskAdapterListener, DoneAdapter.MyDoneAdapterListener {
+public class TasksFragment extends Fragment implements TaskAdapter.MyTaskAdapterListener {
 
     private TaskViewModel viewModel;
 
     //todo list
     private List<Task> taskList = new ArrayList<>();
-    private List<Task> doneList = new ArrayList<>();
     private RecyclerView tasksRecycler;
-    private RecyclerView doneRecycler;
     private TaskAdapter taskAdapter;
-    private DoneAdapter doneAdapter;
-    private TextView doneTv;
-    private boolean isShown = true;
+
+    private SoundManager soundManager;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -50,22 +53,10 @@ public class TasksFragment extends Fragment implements TaskAdapter.MyTaskAdapter
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.main_fragment, container, false);
 
+        soundManager = new SoundManager(getActivity());
+
         //find recycler view
         tasksRecycler = rootView.findViewById(R.id.tasks_recycler);
-        doneRecycler = rootView.findViewById(R.id.done_recycler);
-        doneTv = rootView.findViewById(R.id.done_tv);
-
-        doneTv.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                isShown = !isShown;
-                if(!isShown) {
-                    doneRecycler.setVisibility(View.GONE);
-                } else {
-                    doneRecycler.setVisibility(View.VISIBLE);
-                }
-            }
-        });
 
         //Observe changes on the tasks list
         viewModel.getTasks().observe(this, new Observer<List<Task>>() {
@@ -81,64 +72,41 @@ public class TasksFragment extends Fragment implements TaskAdapter.MyTaskAdapter
     }
 
     @Override
-    public void onCheckClicked(int pos, boolean type) {
-
-        Task task;
-        if (!type) { //transform to DONE
-            task = taskList.get(pos);
-        } else { //transform to UNDONE
-            task = doneList.get(pos);
+    public void onCheckClicked(int pos) {
+        final Task task = taskList.get(pos);
+        task.setComplete(!task.getComplete());
+        int lastIndex = taskList.size() - 1;
+        if (task.getComplete()) {
+            taskAdapter.notifyItemMoved(pos, lastIndex);
+            Collections.swap(taskList, pos, lastIndex);
+            soundManager.playFinishSfx();
+        } else {
+            soundManager.playUndoneSfx();
         }
+        viewModel.updateTask(task);
+    }
 
-        taskAdapter.notifyItemMoved(pos,taskList.size() - 1);
-        //swap in real list
-
-        /*if (task.getComplete()) { //make it NOT DONE
-            task.setComplete(false);
-            doneList.add(0,task);
-            taskList.remove(task);
-            taskAdapter.notifyItemRemoved(pos);
-            doneAdapter.notifyItemInserted(0);
-            viewModel.updateTask(task);
-        } else { //make it DONE
-            task.setComplete(true);
-            taskList.add(0,task);
-            doneList.remove(task);
-            taskAdapter.notifyItemInserted(0);
-            doneAdapter.notifyItemRemoved(pos);
-            viewModel.updateTask(task);
-        }*/
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        soundManager.stopSoundPool();
     }
 
     private void showList(List<Task> tasks) {
 
-        //separate done and undone
-        Collections.reverse(tasks);
+        //clean and re-add all tasks when changed
         taskList.clear();
-        doneList.clear();
-
-        for (Task task : tasks) {
-            if (!task.getComplete()) {
-                taskList.add(task);
-            } else {
-                doneList.add(task);
-            }
-        }
+        Collections.reverse(tasks);
+        taskList.addAll(tasks);
 
         //recyclers
         tasksRecycler.setLayoutManager(new LinearLayoutManager(getActivity()));
         tasksRecycler.setHasFixedSize(true);
         tasksRecycler.setNestedScrollingEnabled(false);
-        doneRecycler.setLayoutManager(new LinearLayoutManager(getActivity()));
-        doneRecycler.setHasFixedSize(true);
-        doneRecycler.setNestedScrollingEnabled(false);
 
         //adapter
-        taskAdapter = new TaskAdapter(taskList);
+        taskAdapter = new TaskAdapter(taskList, getActivity());
         taskAdapter.setListener(this);
-        doneAdapter = new DoneAdapter(doneList);
-        doneAdapter.setListener(this);
         tasksRecycler.setAdapter(taskAdapter);
-        doneRecycler.setAdapter(doneAdapter);
     }
 }

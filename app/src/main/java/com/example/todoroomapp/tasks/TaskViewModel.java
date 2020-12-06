@@ -40,6 +40,10 @@ public class TaskViewModel extends AndroidViewModel {
         databaseHelper.deleteTask(task);
     }
 
+    void updateTaskList(List<Task> tasks) {
+        databaseHelper.updateTaskList(tasks);
+    }
+
     void updateTask(Task task) {
         databaseHelper.updateTask(task);
     }

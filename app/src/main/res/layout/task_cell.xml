@@ -6,7 +6,6 @@
     android:layout_marginHorizontal="7dp"
     android:layout_marginVertical="1dp"
     app:cardCornerRadius="4dp"
-    app:cardBackgroundColor="@color/black"
     app:cardElevation="1dp"
     android:clickable="true"
     android:focusable="true"
@@ -34,8 +33,9 @@
             android:layout_centerVertical="true"
             android:layout_toEndOf="@id/cell_checkbox"
             android:gravity="start"
-            android:text="היי מה קורה לך"
-            android:textColor="#fff"
+            android:text="בדיקה"
+            android:maxLines="1"
+            android:textColor="#000"
             android:textSize="18sp" />
 
     </RelativeLayout>
